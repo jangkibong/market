@@ -1,7 +1,9 @@
-from fastapi import FastAPI, UploadFile, Form, Response
+from fastapi import FastAPI, UploadFile, Form, Response, Depends
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.staticfiles import StaticFiles
+from fastapi_login import LoginManager
+from fastapi_login.exceptions import InvalidCredentialsException
 from typing import Annotated
 import sqlite3
 
@@ -25,9 +27,64 @@ cur.execute(f"""
 # FastAPI 애플리케이션 인스턴스 생성
 app = FastAPI()
 
+SERCRET = "super-coding"
+manager = LoginManager(SERCRET, '/login')
+
+@manager.user_loader()
+def query_user(data):
+    WHERE_STATEMENTS = f"id='{data}'"
+    if type(data) == dict:
+        WHERE_STATEMENTS = f"id='{data['name']}'"
+        
+    # 행의 컬럼명도 함께 가져오기 위해 row_factory 설정
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    user = cur.execute(f"""
+                        SELECT * from users WHERE {WHERE_STATEMENTS}
+                        """).fetchone()
+    return user
+
+@app.post('/login')
+def login( id: Annotated[str, Form()],
+            pw: Annotated[str, Form()],):
+    user = query_user(id)
+    # print(pw)
+    if not user:
+        raise InvalidCredentialsException # 401 코드를 내려줌
+    elif pw != user['pw']:
+        raise InvalidCredentialsException # 401 코드를 내려줌
+        
+        
+    access_token = manager.create_access_token(data={
+        'sub':{
+            'id' : user['id'],
+            'name' : user['name'],
+            'email' : user['email'],
+        }
+        
+    })
+    return {'access_token': access_token}
+
+
+# 사용자 가입 API
+@app.post('/signup')
+def signup(
+    id: Annotated[str, Form()],  # 사용자 ID
+    pw: Annotated[str, Form()],  # 사용자 비밀번호
+    name: Annotated[str, Form()], # 사용자 이름
+    email: Annotated[str, Form()] # 사용자 이메일
+):
+    
+    cur.execute(f"""
+                INSERT INTO users(id, pw, name, email)
+                Values ("{id}","{pw}","{name}","{email}")
+                """)
+    con.commit()
+    return 200  # 성공 응답
+
 # 모든 아이템 조회 API
 @app.get('/items')
-async def get_items():
+async def get_items(user=Depends(manager)):
     # 행의 컬럼명도 함께 가져오기 위해 row_factory 설정
     con.row_factory = sqlite3.Row
     cur = con.cursor()
@@ -61,7 +118,7 @@ async def create_item(
     place: Annotated[str, Form()],  # 아이템 위치
     insertAt: Annotated[int, Form()]  # 삽입 시각
 ):
-    print(image, title, price, description, place)
+    # print(image, title, price, description, place)
     
     # 이미지 파일을 바이트로 읽음
     imag_bytes = await image.read()
@@ -73,21 +130,6 @@ async def create_item(
     con.commit()  # 변경 사항 커밋
     return '200'  # 성공 응답
 
-# 사용자 가입 API
-@app.post('/signup')
-def signup(
-    id: Annotated[str, Form()],  # 사용자 ID
-    pw: Annotated[str, Form()],  # 사용자 비밀번호
-    name: Annotated[str, Form()], # 사용자 이름
-    email: Annotated[str, Form()] # 사용자 이메일
-):
-    
-    cur.execute(f"""
-                INSERT INTO users(id, pw, name, email)
-                Values ("{id}","{pw}","{name}","{email}")
-                """)
-    con.commit()
-    return 200  # 성공 응답
 
 # 정적 파일(프론트엔드) 서빙
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
