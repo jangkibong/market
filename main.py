@@ -27,14 +27,14 @@ cur.execute(f"""
 # FastAPI 애플리케이션 인스턴스 생성
 app = FastAPI()
 
-SERCRET = "super-coding"
-manager = LoginManager(SERCRET, '/login')
+SECRET = "super-coding"
+manager = LoginManager(SECRET, '/login')
 
 @manager.user_loader()
 def query_user(data):
     WHERE_STATEMENTS = f"id='{data}'"
     if type(data) == dict:
-        WHERE_STATEMENTS = f"id='{data['name']}'"
+        WHERE_STATEMENTS = f"id='{data['id']}'"
         
     # 행의 컬럼명도 함께 가져오기 위해 row_factory 설정
     con.row_factory = sqlite3.Row
@@ -56,11 +56,12 @@ def login( id: Annotated[str, Form()],
         
         
     access_token = manager.create_access_token(data={
-        'sub':{
-            'id' : user['id'],
-            'name' : user['name'],
-            'email' : user['email'],
-        }
+        'sub': user['id']
+        # {
+            # 'id' : user['id'],
+            # 'name' : user['name'],
+            # 'email' : user['email'],
+        # }
         
     })
     return {'access_token': access_token}

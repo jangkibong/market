@@ -1,7 +1,5 @@
 const form = document.querySelector("#login-form");
 
-let accessToken = null;
-
 // 폼 제출 처리 함수
 const handleSubmit = async (e) => {
     // 기본 제출 이벤트 방지
@@ -20,24 +18,27 @@ const handleSubmit = async (e) => {
     });
 
     const data = await res.json();
-    accessToken = data.access_token;
+    const accessToken = data.access_token;
 
     console.log(accessToken);
 
     if (res.status === 200) {
+        window.localStorage.setItem("token", accessToken);
         alert("로그인에 성공했습니다.");
 
-        // 상품 가져오기
-        const res = await fetch("/items", {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-        });
+        // // 상품 가져오기
+        // const res = await fetch("/items", {
+        //     method: "GET",
+        //     headers: {
+        //         Authorization: `Bearer ${accessToken.trim()}`,
+        //         Accept: "application/json",
+        //         "Content-Type": "application/json",
+        //     },
+        // });
 
-        const data = await res.json();
-        console.log(data);
-
-        // window.location.pathname = "/";
+        // const data = await res.json();
+        // console.log(data);
+        window.location.pathname = "/";
     } else if (res.status === 401) {
         alert("아이디 또는 비밀번호가 틀렸습니다.");
     }

@@ -4,8 +4,18 @@ const calcTime = (timestamp) => {
     const hour = time.getHours();
     const min = time.getMinutes();
     const sec = time.getSeconds();
+    const calcDay = hour / 24;
+    const day = Math.floor(calcDay);
+    const calcMonth = day / 31;
+    const month = Math.floor(calcMonth);
 
-    if (hour > 0) {
+    console.log(`month: ${month}`, `day: ${day}`, `hour: ${hour}`, `min: ${min}`, `sec: ${sec}`);
+
+    if (month > 0) {
+        return `${month}달 전`;
+    } else if (day > 0) {
+        return `${day}일 전`;
+    } else if (hour > 0) {
         return `${hour}시간 전`;
     } else if (min > 0) {
         return `${min}분 전`;
@@ -73,7 +83,15 @@ const renderData = (data) => {
 };
 
 const fetchList = async () => {
-    const res = await fetch("/items");
+    const accessToken = window.localStorage.getItem("token");
+    console.log(accessToken);
+    const res = await fetch("/items", {
+        headers: {
+            Authorization: `Bearer ${accessToken.trim()}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+        },
+    });
     const data = await res.json();
 
     console.log(data);
